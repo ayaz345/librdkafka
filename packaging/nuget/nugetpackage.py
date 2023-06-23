@@ -250,8 +250,7 @@ class NugetPackage (Package):
         if vless_version[0] == 'v':
             vless_version = vless_version[1:]
 
-        self.stpath = tempfile.mkdtemp(prefix="out-", suffix="-%s" % buildtype,
-                                       dir=".")
+        self.stpath = tempfile.mkdtemp(prefix="out-", suffix=f"-{buildtype}", dir=".")
 
         self.render('librdkafka.redist.nuspec')
         self.copy_template('librdkafka.redist.targets',
@@ -264,16 +263,16 @@ class NugetPackage (Package):
             if 'bldtype' not in a.info:
                 a.info['bldtype'] = 'release'
 
-            a.info['variant'] = '%s-%s-%s' % (a.info.get('plat'),
-                                              a.info.get('arch'),
-                                              a.info.get('bldtype'))
+            a.info[
+                'variant'
+            ] = f"{a.info.get('plat')}-{a.info.get('arch')}-{a.info.get('bldtype')}"
             if 'toolset' not in a.info:
                 a.info['toolset'] = 'v142'
 
         # Apply mappings and extract files
         self.apply_mappings()
 
-        print('Tree extracted to %s' % self.stpath)
+        print(f'Tree extracted to {self.stpath}')
 
         # After creating a bare-bone nupkg layout containing the artifacts
         # and some spec and props files, call the 'nuget' utility to
@@ -283,4 +282,4 @@ class NugetPackage (Package):
                                             'librdkafka.redist.nuspec'),
                                self.stpath), shell=True)
 
-        return 'librdkafka.redist.%s.nupkg' % vless_version
+        return f'librdkafka.redist.{vless_version}.nupkg'

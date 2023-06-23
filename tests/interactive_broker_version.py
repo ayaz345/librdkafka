@@ -28,7 +28,7 @@ def version_as_number(version):
     if version == 'trunk':
         return sys.maxsize
     tokens = version.split('.')
-    return float('%s.%s' % (tokens[0], tokens[1]))
+    return float(f'{tokens[0]}.{tokens[1]}')
 
 
 def test_version(version, cmd=None, deploy=True, conf={}, debug=False,
@@ -39,7 +39,7 @@ def test_version(version, cmd=None, deploy=True, conf={}, debug=False,
     Then run librdkafka's regression tests.
     """
 
-    print('## Test version %s' % version)
+    print(f'## Test version {version}')
 
     cluster = Cluster('LibrdkafkaTestCluster', root_path, debug=debug)
 
@@ -59,20 +59,19 @@ def test_version(version, cmd=None, deploy=True, conf={}, debug=False,
         KerberosKdcApp(cluster, 'MYREALM').start()
 
     defconf = {'version': version}
-    defconf.update(conf)
+    defconf |= conf
 
     print('conf: ', defconf)
 
     brokers = []
-    for n in range(0, broker_cnt):
+    for _ in range(0, broker_cnt):
         # Configure rack & replica selector if broker supports
         # fetch-from-follower
         if version_as_number(version) >= 2.4:
-            defconf.update(
-                {
-                    'conf': [
-                        'broker.rack=RACK${appid}',
-                        'replica.selector.class=org.apache.kafka.common.replica.RackAwareReplicaSelector']})  # noqa: E501
+            defconf['conf'] = [
+                'broker.rack=RACK${appid}',
+                'replica.selector.class=org.apache.kafka.common.replica.RackAwareReplicaSelector',
+            ]
         brokers.append(KafkaBrokerApp(cluster, defconf))
 
     cmd_env = os.environ.copy()
@@ -92,9 +91,7 @@ def test_version(version, cmd=None, deploy=True, conf={}, debug=False,
     if mech != '':
         os.write(fd, ('sasl.mechanisms=%s\n' % mech).encode('ascii'))
         if mech == 'PLAIN' or mech.find('SCRAM') != -1:
-            print(
-                '# Writing SASL %s client config to %s' %
-                (mech, test_conf_file))
+            print(f'# Writing SASL {mech} client config to {test_conf_file}')
             security_protocol = 'SASL_PLAINTEXT'
             # Use first user as SASL user/pass
             for up in defconf.get('sasl_users', '').split(','):
@@ -135,18 +132,12 @@ def test_version(version, cmd=None, deploy=True, conf={}, debug=False,
                          'scope=requiredScope principal=admin').encode(
                          'ascii'))
         else:
-            print(
-                '# FIXME: SASL %s client config not written to %s' %
-                (mech, test_conf_file))
+            print(f'# FIXME: SASL {mech} client config not written to {test_conf_file}')
 
     # SSL support
     ssl = getattr(cluster, 'ssl', None)
     if ssl is not None:
-        if 'SASL' in security_protocol:
-            security_protocol = 'SASL_SSL'
-        else:
-            security_protocol = 'SSL'
-
+        security_protocol = 'SASL_SSL' if 'SASL' in security_protocol else 'SSL'
         key = ssl.create_cert('librdkafka')
 
         os.write(fd, ('ssl.ca.location=%s\n' % ssl.ca['pem']).encode('ascii'))
@@ -160,19 +151,19 @@ def test_version(version, cmd=None, deploy=True, conf={}, debug=False,
                  key['password']).encode('ascii'))
 
         for k, v in ssl.ca.items():
-            cmd_env['SSL_ca_{}'.format(k)] = v
+            cmd_env[f'SSL_ca_{k}'] = v
 
         # Set envs for all generated keys so tests can find them.
         for k, v in key.items():
             if isinstance(v, dict):
                 for k2, v2 in v.items():
                     # E.g. "SSL_priv_der=path/to/librdkafka-priv.der"
-                    cmd_env['SSL_{}_{}'.format(k, k2)] = v2
+                    cmd_env[f'SSL_{k}_{k2}'] = v2
             else:
-                cmd_env['SSL_{}'.format(k)] = v
+                cmd_env[f'SSL_{k}'] = v
 
     # Define bootstrap brokers based on selected security protocol
-    print('# Using client security.protocol=%s' % security_protocol)
+    print(f'# Using client security.protocol={security_protocol}')
     all_listeners = (
         ','.join(
             cluster.get_all(
@@ -193,17 +184,18 @@ def test_version(version, cmd=None, deploy=True, conf={}, debug=False,
     else:
         print('# Not deploying')
 
-    print('# Starting cluster, instance path %s' % cluster.instance_path())
+    print(f'# Starting cluster, instance path {cluster.instance_path()}')
     cluster.start()
 
     print('# Waiting for brokers to come up')
 
     if not cluster.wait_operational(30):
         cluster.stop(force=True)
-        raise Exception('Cluster %s did not go operational, see logs in %s/%s' %  # noqa: E501
-                        (cluster.name, cluster.root_path, cluster.instance))
+        raise Exception(
+            f'Cluster {cluster.name} did not go operational, see logs in {cluster.root_path}/{cluster.instance}'
+        )
 
-    print('# Connect to cluster with bootstrap.servers %s' % bootstrap_servers)
+    print(f'# Connect to cluster with bootstrap.servers {bootstrap_servers}')
 
     cmd_env['KAFKA_PATH'] = brokers[0].conf.get('destdir')
     cmd_env['RDKAFKA_TEST_CONF'] = test_conf_file
@@ -235,7 +227,7 @@ def test_version(version, cmd=None, deploy=True, conf={}, debug=False,
 
     ret = True
 
-    for i in range(0, exec_cnt):
+    for _ in range(0, exec_cnt):
         retcode = subprocess.call(
             cmd,
             env=cmd_env,
@@ -320,11 +312,7 @@ if __name__ == '__main__':
              must config SASL mechanism to OAUTHBEARER')
 
     args = parser.parse_args()
-    if args.conf is not None:
-        args.conf = json.loads(args.conf)
-    else:
-        args.conf = {}
-
+    args.conf = json.loads(args.conf) if args.conf is not None else {}
     args.conf.update(read_scenario_conf(args.scenario))
 
     if args.port is not None:
@@ -349,7 +337,7 @@ if __name__ == '__main__':
         args.conf['sasl_oauthbearer_method'] = \
             args.sasl_oauthbearer_method
 
-    args.conf.get('conf', list()).append("log.retention.bytes=1000000000")
+    args.conf.get('conf', []).append("log.retention.bytes=1000000000")
 
     for version in args.versions:
         r = test_version(version, cmd=args.cmd, deploy=args.deploy,

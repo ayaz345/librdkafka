@@ -34,9 +34,11 @@ def parse(linenr, string):
         if d['req']['Produce'] == 0:
             continue
 
-        out = {'0time': dt, '1nodeid': d['nodeid']}
-        out['stateage'] = int(d['stateage'] / 1000)
-
+        out = {
+            '0time': dt,
+            '1nodeid': d['nodeid'],
+            'stateage': int(d['stateage'] / 1000),
+        }
         for c in collect:
             out[c] = d[c]
 

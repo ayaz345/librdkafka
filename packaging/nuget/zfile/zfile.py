@@ -10,10 +10,7 @@ class ZFile (object):
     def __init__(self, path, mode='r', ext=None):
         super(ZFile, self).__init__()
 
-        if ext is not None:
-            _ext = ext
-        else:
-            _ext = os.path.splitext(path)[-1]
+        _ext = ext if ext is not None else os.path.splitext(path)[-1]
         if _ext.startswith('.'):
             _ext = _ext[1:]
 
@@ -22,9 +19,9 @@ class ZFile (object):
         elif tarfile.is_tarfile(path) or _ext in ('tar', 'tgz', 'gz'):
             self.f = tarfile.open(path, mode)
         elif _ext == 'rpm':
-            self.f = rpmfile.open(path, mode + 'b')
+            self.f = rpmfile.open(path, f'{mode}b')
         else:
-            raise ValueError('Unsupported file extension: %s' % path)
+            raise ValueError(f'Unsupported file extension: {path}')
 
     def __enter__(self):
         return self
@@ -44,10 +41,7 @@ class ZFile (object):
             raise NotImplementedError
 
     def headers(self):
-        if isinstance(self.f, rpmfile.RPMFile):
-            return self.f.headers
-        else:
-            return dict()
+        return self.f.headers if isinstance(self.f, rpmfile.RPMFile) else {}
 
     def extract_to(self, member, path):
         """ Extract compress file's \\p member to \\p path
@@ -67,8 +61,7 @@ class ZFile (object):
                 zf = self.f.extractfile(member)
 
             while True:
-                b = zf.read(1024 * 100)
-                if b:
+                if b := zf.read(1024 * 100):
                     of.write(b)
                 else:
                     break

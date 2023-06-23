@@ -23,9 +23,7 @@ else:
 def unquote(path):
     # Removes URL escapes, and normalizes the path by removing ./.
     path = _unquote(path)
-    if path[:2] == './':
-        return path[2:]
-    return path
+    return path[2:] if path[:2] == './' else path
 
 
 # Rename token values
@@ -120,7 +118,7 @@ class Artifact (object):
             self.lpath = os.path.join(arts.dlpath, slpath)
 
         if info is None:
-            self.info = dict()
+            self.info = {}
         else:
             # Assign the map and convert all keys to lower case
             self.info = {k.lower(): v for k, v in info.items()}
@@ -151,7 +149,7 @@ class Artifact (object):
             If the artifact is already downloaded nothing is done. """
         if os.path.isfile(self.lpath) and os.path.getsize(self.lpath) > 0:
             return
-        print('Downloading %s' % self.path)
+        print(f'Downloading {self.path}')
         if dry_run:
             return
         ldir = os.path.dirname(self.lpath)
@@ -164,7 +162,7 @@ class Artifacts (object):
     def __init__(self, match, dlpath):
         super(Artifacts, self).__init__()
         self.match = match
-        self.artifacts = list()
+        self.artifacts = []
         # Download directory (make sure it ends with a path separator)
         if not dlpath.endswith(os.path.sep):
             dlpath = os.path.join(dlpath, '')
@@ -190,14 +188,14 @@ class Artifacts (object):
         # matching of project, gitref, etc.
         rinfo = re.findall(r'(?P<tag>[^-]+)-(?P<val>.*?)(?:__|$)', folder)
         if rinfo is None or len(rinfo) == 0:
-            print('Incorrect folder/file name format for %s' % folder)
+            print(f'Incorrect folder/file name format for {folder}')
             return None
 
         info = dict(rinfo)
 
         # Ignore AppVeyor Debug builds
         if info.get('bldtype', '').lower() == 'debug':
-            print('Ignoring debug artifact %s' % folder)
+            print(f'Ignoring debug artifact {folder}')
             return None
 
         tag = info.get('tag', None)
@@ -207,15 +205,14 @@ class Artifacts (object):
             # in the string - so translate that to no tag.
             del info['tag']
 
-        # Perform matching
-        unmatched = list()
-        for m, v in self.match.items():
-            if m not in info or info[m] != v:
-                unmatched.append(f"{m} = {v}")
-
+        unmatched = [
+            f"{m} = {v}"
+            for m, v in self.match.items()
+            if m not in info or info[m] != v
+        ]
         # Make sure all matches were satisfied, unless this is a
         # common artifact.
-        if info.get('p', '') != 'common' and len(unmatched) > 0:
+        if info.get('p', '') != 'common' and unmatched:
             return None
 
         return Artifact(self, path, info)
@@ -223,9 +220,7 @@ class Artifacts (object):
     def collect_s3(self):
         """ Collect and download build-artifacts from S3 based on
         git reference """
-        print(
-            'Collecting artifacts matching %s from S3 bucket %s' %
-            (self.match, s3_bucket))
+        print(f'Collecting artifacts matching {self.match} from S3 bucket {s3_bucket}')
         self.s3 = boto3.resource('s3')
         self.s3_bucket = self.s3.Bucket(s3_bucket)
         self.s3_client = boto3.client('s3')
@@ -314,7 +309,7 @@ class Package (object):
         # Staging path, filled in later.
         self.stpath = None
         self.kv = {'version': version}
-        self.files = dict()
+        self.files = {}
 
     def add_file(self, file):
         self.files[file] = True
@@ -380,15 +375,13 @@ class Package (object):
                         attr = attr[1:]
 
                         if attr in a.info and \
-                           a.info[attr] != m.attributes[origattr]:
+                               a.info[attr] != m.attributes[origattr]:
                             found = False
                             break
-                    else:
-                        # Require attribute to match
-                        if attr not in a.info or \
-                           a.info[attr] != m.attributes[attr]:
-                            found = False
-                            break
+                    elif attr not in a.info or \
+                               a.info[attr] != m.attributes[attr]:
+                        found = False
+                        break
 
                 if not fnmatch(a.fname, m.fname_glob):
                     found = False
@@ -404,8 +397,8 @@ class Package (object):
 
             if artifact is None:
                 raise MissingArtifactError(
-                    '%s: unable to find artifact with tags %s matching "%s"' %
-                    (m, str(m.attributes), m.fname_glob))
+                    f'{m}: unable to find artifact with tags {str(m.attributes)} matching "{m.fname_glob}"'
+                )
 
             output_path = os.path.join(self.stpath, m.output_path)
 
@@ -429,15 +422,15 @@ class Package (object):
     def verify(self, path):
         """ Verify package content based on the previously defined mappings """
 
-        missing = list()
+        missing = []
         with zfile.ZFile(path, 'r') as zf:
-            print('Verifying %s:' % path)
+            print(f'Verifying {path}:')
 
             # Zipfiles may url-encode filenames, unquote them before matching.
             pkgd = [unquote(x) for x in zf.getnames()]
             missing = [x for x in self.mappings if x.output_path not in pkgd]
 
-        if len(missing) > 0:
+        if missing:
             print(
                 'Missing files in package %s:\n%s' %
                 (path, '\n'.join([str(x) for x in missing])))

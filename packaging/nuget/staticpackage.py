@@ -166,13 +166,13 @@ class StaticPackage (Package):
 
         self.apply_mappings()
 
-        print('Tree extracted to %s' % self.stpath)
+        print(f'Tree extracted to {self.stpath}')
 
         # After creating a bare-bone layout, create a tarball.
-        outname = "librdkafka-static-bundle-%s.tgz" % self.version
-        print('Writing to %s in %s' % (outname, self.stpath))
-        subprocess.check_call("(cd %s && tar cvzf ../%s .)" %
-                              (self.stpath, outname),
-                              shell=True)
+        outname = f"librdkafka-static-bundle-{self.version}.tgz"
+        print(f'Writing to {outname} in {self.stpath}')
+        subprocess.check_call(
+            f"(cd {self.stpath} && tar cvzf ../{outname} .)", shell=True
+        )
 
         return outname

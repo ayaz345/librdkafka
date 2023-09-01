@@ -25,13 +25,13 @@ from jsoncomment import JsonComment
 def version_as_list(version):
     if version == 'trunk':
         return [sys.maxsize]
-    return [int(a) for a in re.findall('\\d+', version)][0:3]
+    return [int(a) for a in re.findall('\\d+', version)][:3]
 
 
 def read_scenario_conf(scenario):
     """ Read scenario configuration from scenarios/<scenario>.json """
     parser = JsonComment(json)
-    with open(os.path.join('scenarios', scenario + '.json'), 'r') as f:
+    with open(os.path.join('scenarios', f'{scenario}.json'), 'r') as f:
         return parser.load(f)
 
 
@@ -59,7 +59,7 @@ class LibrdkafkaTestCluster(Cluster):
         if 'SSL' in conf.get('security.protocol', ''):
             self.ssl = SslApp(self, defconf)
 
-        self.brokers = list()
+        self.brokers = []
 
         # One ZK (from Kafka repo)
         ZookeeperApp(self)
@@ -72,9 +72,9 @@ class LibrdkafkaTestCluster(Cluster):
             kdc.start()
 
         if 'OAUTHBEARER'.casefold() == \
-            defconf.get('sasl_mechanisms', "").casefold() and \
-                'OIDC'.casefold() == \
-                defconf.get('sasl_oauthbearer_method', "").casefold():
+                defconf.get('sasl_mechanisms', "").casefold() and \
+                    'OIDC'.casefold() == \
+                    defconf.get('sasl_oauthbearer_method', "").casefold():
             self.oidc = OauthbearerOIDCApp(self)
 
         # Brokers
@@ -83,7 +83,7 @@ class LibrdkafkaTestCluster(Cluster):
                         'security.protocol': 'PLAINTEXT'})
         self.conf = defconf
 
-        for n in range(0, num_brokers):
+        for _ in range(0, num_brokers):
             # Configure rack & replica selector if broker supports
             # fetch-from-follower
             if version_as_list(version) >= [2, 4, 0]:
@@ -118,11 +118,7 @@ def result2color(res):
 def print_test_report_summary(name, report):
     """ Print summary for a test run. """
     passed = report.get('PASSED', False)
-    if passed:
-        resstr = '\033[42mPASSED\033[0m'
-    else:
-        resstr = '\033[41mFAILED\033[0m'
-
+    resstr = '\033[42mPASSED\033[0m' if passed else '\033[41mFAILED\033[0m'
     print('%6s  %-50s: %s' % (resstr, name, report.get('REASON', 'n/a')))
     if not passed:
         # Print test details
@@ -141,26 +137,16 @@ def print_test_report_summary(name, report):
 
 def print_report_summary(fullreport):
     """ Print summary from a full report suite """
-    suites = fullreport.get('suites', list())
+    suites = fullreport.get('suites', [])
     print('#### Full test suite report (%d suite(s))' % len(suites))
     for suite in suites:
         for version, report in suite.get('version', {}).items():
-            print_test_report_summary('%s @ %s' %
-                                      (suite.get('name', 'n/a'), version),
-                                      report)
+            print_test_report_summary(f"{suite.get('name', 'n/a')} @ {version}", report)
 
     pass_cnt = fullreport.get('pass_cnt', -1)
-    if pass_cnt == 0:
-        pass_clr = ''
-    else:
-        pass_clr = '\033[42m'
-
+    pass_clr = '' if pass_cnt == 0 else '\033[42m'
     fail_cnt = fullreport.get('fail_cnt', -1)
-    if fail_cnt == 0:
-        fail_clr = ''
-    else:
-        fail_clr = '\033[41m'
-
+    fail_clr = '' if fail_cnt == 0 else '\033[41m'
     print('#### %d suites %sPASSED\033[0m, %d suites %sFAILED\033[0m' %
           (pass_cnt, pass_clr, fail_cnt, fail_clr))
 

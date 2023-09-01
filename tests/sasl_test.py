@@ -44,12 +44,10 @@ def test_it(version, deploy=True, conf={}, rdkconf={}, tests=None, debug=False,
     cluster.start(timeout=30)
 
     print(
-        '# Connect to cluster with bootstrap.servers %s' %
-        cluster.bootstrap_servers())
+        f'# Connect to cluster with bootstrap.servers {cluster.bootstrap_servers()}'
+    )
     rdkafka.start()
-    print(
-        '# librdkafka regression tests started, logs in %s' %
-        rdkafka.root_path())
+    print(f'# librdkafka regression tests started, logs in {rdkafka.root_path()}')
     try:
         rdkafka.wait_stopped(timeout=60 * 30)
         rdkafka.dbg(
@@ -77,26 +75,25 @@ def handle_report(report, version, suite):
 
     passed = report.get('tests_passed', 0)
     failed = report.get('tests_failed', 0)
-    if 'all' in suite.get('expect_fail', []) or version in suite.get(
-            'expect_fail', []):
-        expect_fail = True
-    else:
-        expect_fail = False
-
+    expect_fail = 'all' in suite.get(
+        'expect_fail', []
+    ) or version in suite.get('expect_fail', [])
     if expect_fail:
-        if failed == test_cnt:
-            return (True, 'All %d/%d tests failed as expected' %
-                    (failed, test_cnt))
-        else:
-            return (False, '%d/%d tests failed: expected all to fail' %
-                    (failed, test_cnt))
+        return (
+            (True, 'All %d/%d tests failed as expected' % (failed, test_cnt))
+            if failed == test_cnt
+            else (
+                False,
+                '%d/%d tests failed: expected all to fail'
+                % (failed, test_cnt),
+            )
+        )
+    if failed > 0:
+        return (False, '%d/%d tests passed: expected all to pass' %
+                (passed, test_cnt))
     else:
-        if failed > 0:
-            return (False, '%d/%d tests passed: expected all to pass' %
-                    (passed, test_cnt))
-        else:
-            return (True, 'All %d/%d tests passed as expected' %
-                    (passed, test_cnt))
+        return (True, 'All %d/%d tests passed as expected' %
+                (passed, test_cnt))
 
 
 if __name__ == '__main__':

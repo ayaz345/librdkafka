@@ -58,11 +58,10 @@ def may_delete(path):
     if tag is None:
         return True
 
-    if re.match(r'^v?\d+\.\d+\.\d+(-?RC\d+)?$', tag,
-                flags=re.IGNORECASE) is None:
-        return True
-
-    return False
+    return (
+        re.match(r'^v?\d+\.\d+\.\d+(-?RC\d+)?$', tag, flags=re.IGNORECASE)
+        is None
+    )
 
 
 def collect_s3(s3, min_age_days=60):
@@ -116,11 +115,7 @@ if __name__ == '__main__':
     dry_run = args.delete is not True
     min_age_days = args.age
 
-    if dry_run:
-        op = "Eligible for deletion"
-    else:
-        op = "Deleting"
-
+    op = "Eligible for deletion" if dry_run else "Deleting"
     s3 = boto3.client('s3')
 
     # Collect eligible artifacts

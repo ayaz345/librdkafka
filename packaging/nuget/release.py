@@ -71,7 +71,7 @@ if __name__ == '__main__':
     dry_run = args.dry_run
     retries = args.retries
     if not args.directory:
-        args.directory = 'dl-%s' % args.tag
+        args.directory = f'dl-{args.tag}'
 
     match = {}
     if not args.ignore_tag:
@@ -89,7 +89,7 @@ if __name__ == '__main__':
                          'should be one of NugetPackage or StaticPackage')
 
     try:
-        match.update(getattr(pkgclass, 'match'))
+        match |= getattr(pkgclass, 'match')
     except BaseException:
         pass
 
@@ -105,11 +105,11 @@ if __name__ == '__main__':
         arts.collect_local(arts.dlpath)
 
         if len(arts.artifacts) == 0:
-            raise ValueError('No artifacts found for %s' % match)
+            raise ValueError(f'No artifacts found for {match}')
 
-        print('Collected artifacts (%s):' % (arts.dlpath))
+        print(f'Collected artifacts ({arts.dlpath}):')
         for a in arts.artifacts:
-            print(' %s' % a.lpath)
+            print(f' {a.lpath}')
         print('')
 
         if args.nuget_version is not None:
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     if not args.no_cleanup:
         p.cleanup()
     else:
-        print(' --no-cleanup: leaving %s' % p.stpath)
+        print(f' --no-cleanup: leaving {p.stpath}')
 
     print('')
 
@@ -151,7 +151,7 @@ if __name__ == '__main__':
         print('Package failed verification.')
         sys.exit(1)
 
-    print('Created package: %s' % pkgfile)
+    print(f'Created package: {pkgfile}')
 
     if args.upload is not None:
         if os.path.isfile(args.upload):
@@ -160,8 +160,8 @@ if __name__ == '__main__':
         else:
             nuget_key = args.upload
 
-        print('Uploading %s to NuGet' % pkgfile)
-        r = os.system("./push-to-nuget.sh '%s' %s" % (nuget_key, pkgfile))
+        print(f'Uploading {pkgfile} to NuGet')
+        r = os.system(f"./push-to-nuget.sh '{nuget_key}' {pkgfile}")
         assert int(r) == 0, \
             f"NuGet upload failed with exit code {r}, see previous errors"
-        print('%s successfully uploaded to NuGet' % pkgfile)
+        print(f'{pkgfile} successfully uploaded to NuGet')

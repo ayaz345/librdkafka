@@ -15,7 +15,7 @@ import hashlib
 if __name__ == '__main__':
 
     if len(sys.argv) != 2:
-        print("Usage: {} <tag>".format(sys.argv[0]))
+        print(f"Usage: {sys.argv[0]} <tag>")
         sys.exit(1)
 
     tag = sys.argv[1]
@@ -24,8 +24,7 @@ if __name__ == '__main__':
     print("Release asset checksums:")
 
     for ftype in ["zip", "tar.gz"]:
-        url = "https://github.com/edenhill/librdkafka/archive/{}.{}".format(
-            tag, ftype)
+        url = f"https://github.com/edenhill/librdkafka/archive/{tag}.{ftype}"
 
         h = hashlib.sha256()
 
@@ -36,4 +35,4 @@ if __name__ == '__main__':
                 break
             h.update(buf)
 
-        print(" * {}.{} SHA256 `{}`".format(tag, ftype, h.hexdigest()))
+        print(f" * {tag}.{ftype} SHA256 `{h.hexdigest()}`")
